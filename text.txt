@@ -1,1 +1,110 @@
-hello  hello hi
+**********************credentialsCSVEntity***************************
+
+package utils.entities;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
+import utils.LogUtil;
+import utils.ManageFiles;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+@Data
+@Builder
+@ToString
+@SuppressWarnings("squid:S1068")
+public class CredentialsCsvEntity {
+    private Credentials credentials;
+    private String environment;
+    private String userType;
+
+    public static List<CredentialsCsvEntity> getCredentialsFromFile(String filename){
+        List<CredentialsCsvEntity> credentials = new ArrayList<>();
+        for (String line : ManageFiles.readCsvFile(filename)) {
+            if (!line.contains("username") && !line.isEmpty()) {
+                String[] items = line.split(",");
+                if (items.length > 4) {
+                    credentials.add(CredentialsCsvEntity.builder()
+                            .credentials(Credentials.builder()
+                                    .username(items[1])
+                                    .password(items[2])
+                                    .build())
+                            .userType(items[3])
+                            .environment(items[4])
+                            .build());
+                }
+            }
+        }
+        return credentials;
+    }
+
+    @SuppressWarnings("squid:S2864")
+    public static List<EnvData> getCredentialPerEnv(List<CredentialsCsvEntity> credList) {
+        List<EnvData> credentials = new ArrayList<>();
+        HashMap<String,List<CredentialsCsvEntity>> credListPerEnv = new HashMap<>();
+        for (CredentialsCsvEntity c : credList) {
+            List<CredentialsCsvEntity> clist = new ArrayList<>();
+            if (credListPerEnv.containsKey(c.getEnvironment())) {
+                clist = credListPerEnv.get(c.getEnvironment());
+
+            }
+            clist.add(c);
+            credListPerEnv.put(c.getEnvironment(), clist);
+        }
+        for (String env: credListPerEnv.keySet()) {
+            EnvData envd = EnvData.builder().build();
+            envd.setEnvirName(env);
+            List<UserType> utl = new ArrayList<>();
+            List<String> typesList = new ArrayList<>();
+
+            for (CredentialsCsvEntity cse : credListPerEnv.get(env)) {
+                UserType ut = UserType.builder().build();
+                ut.initialize();
+                if ( !typesList.contains(cse.getUserType())) {
+                    typesList.add(cse.getUserType());
+                    List<Credentials> creds = new ArrayList<>();
+                    if (ut.getCredentials().contains(cse.getCredentials())) {
+                        creds = ut.getCredentials();
+                    }
+                    creds.add(cse.getCredentials());
+                    ut.setCredentials(creds);
+
+                }
+                ut.setUserTypeString(cse.getUserType());
+                utl.add(ut);
+            }
+            envd.setUserTypesList(utl);
+            credentials.add(envd);
+        }
+        return credentials;
+    }
+
+    public static EnvData selectCredentialsPerEnv(List<EnvData> cred, String envName) {
+        for (EnvData env : cred) {
+            if (env.getEnvirName().equals(envName)) {
+                return env;
+            }
+        }
+        return EnvData.builder().build();
+    }
+
+    public static Credentials getFirstCredentialOfType(EnvData cred, String usrType){
+        for (UserType usr: cred.getUserTypesList()) {
+            if (usr.getUserTypeString().equals(usrType)) {
+                if (!usr.getCredentials().isEmpty())
+                    return Credentials.builder()
+                            .username(usr.getCredentials().get(0).getUsername())
+                            .password(usr.getCredentials().get(0).getPassword())
+                            .build();
+                else
+                    break;
+            }
+        }
+        LogUtil.logger.error("No credentials found for user type ".concat(usrType));
+        return Credentials.builder().build();
+    }
+
+}

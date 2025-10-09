@@ -108,3 +108,2802 @@ public class CredentialsCsvEntity {
     }
 
 }
+
+
+
+
+
+**************************ENVData.java******************
+
+package utils.entities;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Data
+@Builder
+@ToString
+public class EnvData {
+    private String envirName;
+    private List<UserType> userTypesList;
+
+    private void initialize() {
+        if (envirName == null) {
+            envirName = "";
+        }
+        if (userTypesList == null) {
+            userTypesList = new ArrayList<>();
+        }
+    }
+
+    public void addUserList(UserType ut) {
+        initialize();
+        this.userTypesList.add(ut);
+    }
+
+    public boolean containsUserType(UserType ut) {
+        initialize();
+        return this.userTypesList.contains(ut);
+    }
+}
+
+************************SelectorCSVEntity.java*********************
+
+package utils.entities;
+
+import com.google.common.base.Joiner;
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
+import org.openqa.selenium.By;
+import utils.LogUtil;
+import utils.ManageFiles;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Data
+@Builder
+@ToString
+@SuppressWarnings("squid:S1068")
+public class SelectorCsvEntity {
+    private String selectorName;
+    private By selectorType;
+    private String selectorValue;
+    private String comments;
+
+    public static SelectorCsvEntity getNewCsvEntity(List<String> fileRows, String pageName, String selectorName) {
+        for (String line : fileRows) {
+            if (line.contains(pageName) && line.contains(selectorName)) {
+                String[] items = line.split(",");
+                return SelectorCsvEntity.builder()
+                        .selectorName(selectorName)
+                        .selectorType(By.cssSelector(items[3]))
+                        .selectorValue(items[3])
+                        .comments(items[4])
+                        .build();
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("all")
+    public static HashMap<String,ArrayList<SelectorCsvEntity>> readFileToCsv(String filename) {
+        HashMap<String,ArrayList<SelectorCsvEntity>> csvEntities = new HashMap<>();
+        for (String line : ManageFiles.readCsvFile(filename)) {
+            if (!line.contains("pageName") && line.length() > 0) {
+                String[] items = line.split(",");
+                if (items.length >= 5) {
+                    String pn = items[0];
+                    String sn = items[1];
+                    String bySel = items[2];
+                    String selValue;
+                    String comm = items[items.length-1];
+                    if (items.length > 5) {
+                        String temp = items[3];
+                        for (int index = 4; index < items.length-1 ; index++ ) {
+                            temp = Joiner.on(',').join(temp, items[index]);
+                        }
+                        selValue = temp.substring(1, temp.length() - 1);
+                    } else {
+                        selValue = items[3].substring(1, items[3].length() - 1);
+                    }
+                    SelectorCsvEntity csve = SelectorCsvEntity.builder()
+                            .selectorName(sn)
+                            .selectorType(getBySelector(bySel,selValue))
+                            .selectorValue(selValue)
+                            .comments(comm)
+                            .build();
+                    ArrayList<SelectorCsvEntity> list = new ArrayList<>();
+                    if (csvEntities.keySet().contains(pn)) {
+                        list = csvEntities.get(pn);
+                    }
+                    list.add(csve);
+                    csvEntities.put(pn,list);
+                } else {
+                    LogUtil.logger.error("Selectors file incorrect format ".concat(filename));
+                }
+            }
+        }
+        return csvEntities;
+    }
+
+    @SuppressWarnings("squid:S1199")
+    private static By getBySelector(String bySel, String selector) {
+
+        return switch (bySel.toUpperCase()) {
+            case "ID" -> By.id(selector);
+            case "CSS" -> By.cssSelector(selector);
+            case "CLASSNAME" -> By.className(selector);
+            case "NAME" -> By.name(selector);
+            case "LINK" -> By.linkText(selector);
+            case "PARTIALLINK" -> By.partialLinkText(selector);
+            case "XPATH" -> By.xpath(selector);
+            case "TAG" -> By.tagName(selector);
+            case "DATA-A8N" -> By.cssSelector("[data-a8n=\"" + selector + "\"]");
+            default -> {
+                LogUtil.logger.warn("Selector type ".concat(bySel).concat(" is not correct!"));
+                yield null;
+            }
+        };
+    }
+
+    public static By getBySelectorExternal(Map<String, ArrayList<SelectorCsvEntity>> selectors, String key, String selector) {
+        if (selectors == null) {
+            LogUtil.logger.error("There are no selectors read from the disk!");
+            return null;
+        }
+        for (SelectorCsvEntity cse : selectors.get(key)) {
+            if (cse.getSelectorName().equals(selector)) {
+                return cse.getSelectorType();
+            }
+        }
+        LogUtil.logger.error("Warning! No selectors found for page ".concat(key)
+                .concat(" and selector name ").concat(selector));
+        return null;
+    }
+}
+
+
+*****************************Selector***********
+
+package utils.entities;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
+import org.openqa.selenium.support.How;
+
+@Data
+@Builder
+@ToString
+@SuppressWarnings("squid:S1068")
+public class SelectorEntity {
+
+    private How how;
+    private String selector;
+
+}
+
+
+******************UserType.java*******
+
+package utils.entities;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Data
+@Builder
+@ToString
+public class UserType {
+    private String userTypeString;
+    private List<Credentials> credentials;
+
+    public void initialize() {
+        if (userTypeString == null) {
+            userTypeString = "";
+        }
+        if (credentials == null) {
+            credentials = new ArrayList<>();
+        }
+    }
+}
+************************Devices************** Enam
+
+package utils.enums;
+
+import static utils.Constants.LATEST;
+import static utils.Constants.WINDOWS_OS;
+
+public enum Devices {
+    WINDOWS_CHROME(WINDOWS_OS, "10", "Chrome", LATEST),
+    WINDOWS_EDGE(WINDOWS_OS, "10", "Edge", LATEST),
+    WINDOWS_FIREFOX(WINDOWS_OS, "10", "Firefox", LATEST),
+    MAC_OS("OS X", "Monterey", "Safari", "15.0"),
+    IOS("iPhone 12", "14", "Safari", "14.0"),
+    ANDROID("Samsung Galaxy S20", "10.0", "Android Browser", "Android Browser Version");
+
+    private final String device;
+    private final String deviceVersion;
+    private final String remoteBrowser;
+    private final String remoteBrowserVersion;
+
+    Devices(String device, String deviceVersion, String remoteBrowser, String remoteBrowserVersion) {
+        this.device = device;
+        this.deviceVersion = deviceVersion;
+        this.remoteBrowser = remoteBrowser;
+        this.remoteBrowserVersion = remoteBrowserVersion;
+    }
+
+    public String getDevice() {
+        return device;
+    }
+
+    public String getDeviceVersion() {
+        return deviceVersion;
+    }
+
+    public String getRemoteBrowser() {
+        return remoteBrowser;
+    }
+
+    public String getRemoteBrowserVersion() {
+        return remoteBrowserVersion;
+    }
+}
+
+***********************DriverType**********enam
+package utils.enums;
+
+import static utils.Constants.LATEST;
+import static utils.Constants.WINDOWS_OS;
+
+public enum Devices {
+    WINDOWS_CHROME(WINDOWS_OS, "10", "Chrome", LATEST),
+    WINDOWS_EDGE(WINDOWS_OS, "10", "Edge", LATEST),
+    WINDOWS_FIREFOX(WINDOWS_OS, "10", "Firefox", LATEST),
+    MAC_OS("OS X", "Monterey", "Safari", "15.0"),
+    IOS("iPhone 12", "14", "Safari", "14.0"),
+    ANDROID("Samsung Galaxy S20", "10.0", "Android Browser", "Android Browser Version");
+
+    private final String device;
+    private final String deviceVersion;
+    private final String remoteBrowser;
+    private final String remoteBrowserVersion;
+
+    Devices(String device, String deviceVersion, String remoteBrowser, String remoteBrowserVersion) {
+        this.device = device;
+        this.deviceVersion = deviceVersion;
+        this.remoteBrowser = remoteBrowser;
+        this.remoteBrowserVersion = remoteBrowserVersion;
+    }
+
+    public String getDevice() {
+        return device;
+    }
+
+    public String getDeviceVersion() {
+        return deviceVersion;
+    }
+
+    public String getRemoteBrowser() {
+        return remoteBrowser;
+    }
+
+    public String getRemoteBrowserVersion() {
+        return remoteBrowserVersion;
+    }
+}
+
+
+
+*******************************OS********* Enum
+package utils.enums;
+
+public enum OS {
+    WINDOWS,
+    MAC_OS,
+    IOS,
+    ANDROID;
+}
+
+***************UserType************enum
+
+package utils.enums;
+
+public enum UserTypesEnum {
+
+    ADMIN_USER("AdminUser", "ADMIN_USER"),
+    ANOTHER_WPP_USER("Another_WPP_User", "Another_WPP_User"),
+    REAL_DATA_USER("Real_Data_User", "Real_Data_User");
+
+    private final String cucumberName;
+    private final String type;
+
+    UserTypesEnum(String cucumberName, String type) {
+        this.cucumberName = cucumberName;
+        this.type = type;
+    }
+
+    public String getCucumberName() {
+        return cucumberName;
+    }
+
+    public String getType() {
+        return type;
+    }
+}
+
+*****************LogUtil*********
+
+
+package utils;
+
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
+
+public class LogUtil {
+    public static final XLogger logger = XLoggerFactory.getXLogger(LogUtil.class);
+
+    private LogUtil() {
+        throw new IllegalStateException("Utility class, must not instantiate!");
+    }
+}
+
+****************************Features
+
+@UI @cit @smoke @login @fast
+Feature: 01. Login: Validate the Login Functionality for Standard User
+
+  Scenario: TC001_Login As Admin User and create a standard user
+    Given I login to GSI via IDP as AdminUser user
+    Then User List page is displayed
+******
+
+
+@UI @cit @smoke @login @fast
+Feature: 01. Login: Validate the Create Standard User Functionality
+
+  Scenario: TC001_Create a standard user by providing all mandatory fields and select one application
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC002_Create a standard user by providing all mandatory fields and select two applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC003_Create a standard user by providing all mandatory fields and select all applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I select "Pazien" application
+    And   I select "Fraudsight" application
+    And   I select "Dashboard" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC004_Create a Standard user by providing all the fields and select one application
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC005_Create a Standard user by providing all the fields and select two applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC006_Create a Standard user by providing all the fields and select all the applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I select "Pazien" application
+    And   I select "Fraudsight" application
+    And   I select "Dashboard" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC007_Create a Admin user by providing all mandatory fields and select one application
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC008_Create a Admin user by providing all mandatory fields and select two applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC009_Create a Admin user by providing all mandatory fields and select all applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I select "Pazien" application
+    And   I select "Fraudsight" application
+    And   I select "Dashboard" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC010_Create a Admin user by providing all the fields and select one application
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC011_Create a Admin user by providing all the fields and select two applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+  Scenario: TC012_Create a Admin user by providing all the fields and select all the applications
+    Given I login to GSI via IDP as AdminUser user
+    And   I accept the cookies
+    And   I click on Add user button
+    Then  Add user screen is displayed
+    And   I generate randome firstname,lastname and email
+    And   I enter "FirstName"
+    And   I enter "LastName"
+    And   I enter "JobTitle"
+    And   I enter "Email"
+    And   I click on Mark as Admin checkbox
+    And   I select Country as "UNITED KINGDOM"
+    And   I enter optional field "Phone number"
+    And   I enter optional field "Mobile number"
+    And   I select "Merchant Admin Interface" application
+    And   I select "Launchpad" application
+    And   I select "Pazien" application
+    And   I select "Fraudsight" application
+    And   I select "Dashboard" application
+    And   I create the user
+    And   show see success toaster message
+    And   I verify that the user is created with "FirstName LastName" and "Email" in the user list
+
+
+
+******************pages****************
+
+AccountsPage
+
+package TestRunner.pages;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import utils.LogUtil;
+import utils.Utils;
+import utils.entities.SelectorCsvEntity;
+
+import java.lang.invoke.MethodHandles;
+import java.util.List;
+
+import static utils.variables.BSVariables.ON_MOBILE;
+
+public class AccountsPage extends RUFPage {
+
+    private static final String ACCOUNTS_PAGE = "AccountsPage";
+    private static final String loggingPageName = MethodHandles.lookup().lookupClass().getSimpleName() + " - ";
+    private final By logoutSelector = SelectorCsvEntity.getBySelectorExternal(selectors, ACCOUNTS_PAGE, "logoutSelector");
+    private final By logoutIconSelector = SelectorCsvEntity.getBySelectorExternal(selectors, ACCOUNTS_PAGE, "logoutIconSelector");
+    private final By accountsPanelSelector = SelectorCsvEntity.getBySelectorExternal(selectors, ACCOUNTS_PAGE, "accountsPanelSelector");
+
+    public boolean isAccountsPageDisplayed() {
+        LogUtil.logger.info(loggingPageName + "Accounts page is displayed");
+        return isElementVisibleWithinWait(accountsPanelSelector, DEFAULT_MAX_WAIT_TIME);
+    }
+
+    public boolean clickLogOutLink() {
+        By selector = ON_MOBILE ? logoutIconSelector : logoutSelector;
+        waitForElementVisibility(selector, DEFAULT_MEDIUM_WAIT_TIME);
+        LogUtil.logger.info(loggingPageName + "Clicking logout");
+        return click(selector, DEFAULT_LONG_WAIT_TIME);
+    }
+
+    public boolean clickOnRandomAccount() {
+        List<WebElement> listOfAccounts = getTableRows();
+
+        if (listOfAccounts.isEmpty()) return false;
+
+        int accountNo = Utils.getRandomNumberInRange(0, listOfAccounts.size() - 1);
+        WebElement randomAccount = listOfAccounts.get(accountNo);
+        LogUtil.logger.info(loggingPageName + "Clicking random account");
+        clickJS(randomAccount);
+        return true;
+    }
+
+}
+
+
+********login page***********************************
+
+
+package TestRunner.pages;
+
+import static utils.Constants.*;
+import static utils.ManageFiles.getValueFromFile;
+import static utils.Utils.allUsersCookies;
+import static utils.entities.SelectorCsvEntity.getBySelectorExternal;
+import static utils.enums.UserTypesEnum.ADMIN_USER;
+
+import java.lang.invoke.MethodHandles;
+import java.util.Set;
+
+import customexceptions.PageNavigationException;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Cookie;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+
+import utils.LogUtil;
+import utils.UiTools;
+import utils.browsers.DriverProvider;
+import utils.entities.Credentials;
+import utils.entities.CredentialsCsvEntity;
+import utils.entities.SelectorCsvEntity;
+import utils.enums.UserTypesEnum;
+
+    public class LoginPage extends RUFPage {
+    protected static final String BASE_URL = getValueFromFile("BaseUrl");
+    private static final String IDP_URL = getValueFromFile("IdpUrl");
+    private static final String ADMIN_PORTAL_IDP_URL = getValueFromFile("AdminPortalIdpUrl");
+    private static final String MBD_DEPLOYER_LOGIN_URL = getValueFromFile("MbdDeployerLoginUrl");
+    private static final String DEPLOYER_DASHBOARD_URL = getValueFromFile("MbdDeployerLoginUrl").concat("/#/dashboard");
+    public static final String ADMIN_PAGE_URL = BASE_URL;
+    private static final String IDP_LOGIN_PAGE = "LoginPage";
+    private static final String loggingPageName = MethodHandles.lookup().lookupClass().getSimpleName() + " - ";
+    private final By loginFormTitleSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "loginFormTitleSelector");
+    private final By idpPasswordExpirySkipButtonSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "idpPasswordExpirySkipButtonSelector");
+    private final By idpPasswordExpiryReminderNoButtonSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "idpPasswordExpiryReminderNoButtonSelector");
+    private final By userIDSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "userIDSelector");
+    private final By passwordSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "passwordSelector");
+    private final By signInButtonSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "signInButtonSelector");
+    private final By mobileSignInButtonSelector = getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "mobileSignInButtonSelector");
+    private final By skipAuthenticatorSetupSelector = SelectorCsvEntity.getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "skipAuthenticatorSetupSelector");
+    private final By userListTextSelector = SelectorCsvEntity.getBySelectorExternal(selectors, IDP_LOGIN_PAGE, "userListTextSelector");
+
+
+        private static Credentials goThroughNapCredentials(String user) {
+        Credentials cred = null;
+
+        if (user.equals(ADMIN_USER.getCucumberName())) {
+            cred = CredentialsCsvEntity.getFirstCredentialOfType(credentials, ADMIN_USER.getType());
+        } else if (user.equals(UserTypesEnum.ANOTHER_WPP_USER.getCucumberName())) {
+            cred = CredentialsCsvEntity.getFirstCredentialOfType(credentials, UserTypesEnum.ANOTHER_WPP_USER.getType());
+        } else if (user.equals(UserTypesEnum.REAL_DATA_USER.getCucumberName())) {
+            cred = CredentialsCsvEntity.getFirstCredentialOfType(credentials, UserTypesEnum.REAL_DATA_USER.getType());
+        }
+
+        LogUtil.logger.info(loggingPageName + "Getting credentials object");
+        return cred;
+    }
+
+    public static Credentials getCredentialsOfUserType(String user) {
+        Credentials cred;
+        cred = goThroughNapCredentials(user);
+        if (cred != null && (cred.getUsername() != null || cred.getPassword() != null)) {
+            LogUtil.logger.info(loggingPageName + "User Credentials Retrieved.");
+            return cred;
+        } else {
+            LogUtil.logger.error("Invalid user: ".concat(user));
+            throw new IllegalArgumentException("No credentials found in file!!! " + user);
+        }
+    }
+
+    public boolean verifyPageUrl(String pageType) {
+        String pageUrl = getPageUrlByPageType(pageType);
+
+        if (pageUrl.isEmpty()) {
+            LogUtil.logger.error("Page Url is empty!");
+            return false;
+        }
+        LogUtil.logger.debug("Page URL: ".concat(pageUrl));
+        return isTextInPageUrl(pageUrl);
+    }
+
+    public boolean goToPage(String pageType) {
+        String page = getPageUrlByPageType(pageType);
+
+        if (page.isEmpty()) {
+            LogUtil.logger.error("Page Url is empty!");
+            return false;
+        }
+
+        LogUtil.logger.info(loggingPageName + "Navigating to page: ".concat(page));
+        DriverProvider.getDriver().navigate().to(page);
+        return true;
+    }
+
+    public boolean verifyIdpPageUrl(String pageType) {
+        String pageUrl = pageType.equalsIgnoreCase(ADMIN_KEY) ? IDP_URL : ADMIN_PORTAL_IDP_URL;
+        LogUtil.logger.debug("Page URL: ".concat(pageUrl));
+        return isTextInPageUrl(pageUrl);
+    }
+
+    public boolean isExpiringPasswordDisplayed() {
+        return isElementVisibleWithinWait(idpPasswordExpirySkipButtonSelector, DEFAULT_MEDIUM_WAIT_TIME);
+    }
+
+    public String getLoginPageFormTitle() {
+        waitForElementVisibility(loginFormTitleSelector, DEFAULT_MAX_WAIT_TIME);
+        LogUtil.logger.info(loggingPageName + "Getting Login Page form title");
+        return getTextFromElement(loginFormTitleSelector);
+    }
+
+    public boolean clickExpiringPasswordSkipButton() {
+        LogUtil.logger.info(loggingPageName + "Clicking skip expiring password: "
+                .concat(String.valueOf(idpPasswordExpirySkipButtonSelector)));
+        return click(idpPasswordExpirySkipButtonSelector, DEFAULT_LONG_WAIT_TIME);
+    }
+
+    public boolean clickExpiringPasswordReminderNoButton() {
+        LogUtil.logger.info(loggingPageName + "Clicking reminder expiring password: "
+                .concat(String.valueOf(idpPasswordExpiryReminderNoButtonSelector)));
+        return click(idpPasswordExpiryReminderNoButtonSelector, DEFAULT_LONG_WAIT_TIME);
+    }
+
+    protected String getUserInfo(String userType, String infoType) {
+        String info;
+        Credentials credentialsInfo = getCredentialsOfUserType(userType);
+
+        switch (infoType) {
+            case CREDENTIALS_USERNAME_KEY:
+                info = credentialsInfo.getUsername();
+                LogUtil.logger.info(loggingPageName + "Username retrieved: ".concat(credentialsInfo.getUsername()));
+                break;
+            case CREDENTIALS_PASSWORD_KEY:
+                info = credentialsInfo.getPassword();
+                LogUtil.logger.info(loggingPageName + "Password retrieved for: ".concat(credentialsInfo.getUsername()));
+                break;
+            default:
+                info = "";
+                LogUtil.logger.error("Not a valid user credential type found");
+        }
+        return info;
+    }
+
+    public boolean insertPassword(String userType) {
+        String password = getUserInfo(userType, CREDENTIALS_PASSWORD_KEY);
+        if (password.isEmpty()) {
+            LogUtil.logger.error("Password not found");
+            return false;
+        }
+
+        if (!waitForElementToBeClickable(passwordSelector, DEFAULT_LONG_WAIT_TIME)) {
+            LogUtil.logger.error("Password not entered");
+            return false;
+        }
+        LogUtil.logger.info(loggingPageName + "Entering password");
+        return sendText(passwordSelector, password);
+    }
+
+    public boolean insertUserName(String userType) {
+        String userName = getUserInfo(userType, CREDENTIALS_USERNAME_KEY);
+        String password = getUserInfo(userType, CREDENTIALS_PASSWORD_KEY);
+        if (userName.isEmpty()) {
+            LogUtil.logger.error("UserName not found");
+            return false;
+        }
+        if (!waitForElementToBeClickable(userIDSelector, DEFAULT_LONG_WAIT_TIME)) {
+            LogUtil.logger.error("Username not entered");
+            return false;
+        }
+        if (password.isEmpty()) {
+            LogUtil.logger.error("Password not found");
+            return false;
+        }
+        LogUtil.logger.info(loggingPageName + "Entering username: ".concat(userName));
+        sendText(userIDSelector, userName);
+        return sendText(passwordSelector,password);
+    }
+
+    public boolean clickMobileLoginButton() {
+        if (!waitForElementToBeClickable(mobileSignInButtonSelector, DEFAULT_MAX_WAIT_TIME)) {
+            LogUtil.logger.error("Failed to click mobile Login Button");
+            return false;
+        }
+
+        WebElement signInButton = findElement(mobileSignInButtonSelector);
+        clickJS(signInButton);
+        LogUtil.logger.info(loggingPageName + "Clicking mobile Login Button");
+        wait(1);
+        return true;
+    }
+
+    public boolean clickLoginButton(String userType) {
+        if (!waitForElementToBeClickable(signInButtonSelector, DEFAULT_MAX_WAIT_TIME)) {
+            LogUtil.logger.error("Failed to click Login Button");
+            return false;
+        }
+        boolean result = click(signInButtonSelector, DEFAULT_LONG_WAIT_TIME);
+        LogUtil.logger.info(loggingPageName + "Clicking Login Button");
+        wait(1);
+        return result;
+    }
+
+    public boolean skipAuthenticatorSetup() {
+        LogUtil.logger.info(loggingPageName + "Clicking skip authenticator setup");
+        return click(skipAuthenticatorSetupSelector, DEFAULT_LONG_WAIT_TIME);
+    }
+
+    public void openPageWithCookies(String userType) {
+        DriverProvider.getDriver().get(DEPLOYER_DASHBOARD_URL);
+        Set<Cookie> currentUserCookies = allUsersCookies.get(userType);
+        for (Cookie cookie : currentUserCookies) {
+            DriverProvider.getDriver().manage().addCookie(cookie);
+        }
+        LogUtil.logger.info(loggingPageName + "Opening page with cookies: ".concat(ADMIN_PAGE_URL));
+        DriverProvider.getDriver().get(ADMIN_PAGE_URL);
+    }
+
+    public boolean enterIdpCredentials(String userType) {
+        boolean insertUserName = insertUserName(userType);
+        boolean insertPassword = insertPassword(userType);
+        boolean clickLogin = clickLoginButton(userType);
+        return insertUserName && insertPassword && clickLogin;
+    }
+
+    private String getPageUrlByPageType(String pageType) {
+        String page;
+
+        if (BASE_URL == null) {
+            LogUtil.logger.error("Base URL is null!");
+            return "";
+        }
+
+        switch (pageType) {
+            case ADMIN_KEY:
+                page = ADMIN_PAGE_URL;
+                break;
+            case MBD_DEPLOYER_KEY:
+                page = MBD_DEPLOYER_LOGIN_URL;
+                break;
+            default:
+                page = "";
+                LogUtil.logger.error("Page is empty!");
+        }
+        LogUtil.logger.info(loggingPageName + "Retrieving page: ".concat(page));
+        return page;
+    }
+    public boolean isUserListPageDisplayed() {
+        return isElementDisplayed(userListTextSelector);
+    }
+
+
+}
+
+
+*********************PageObject****************
+
+package TestRunner.pages;
+
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.Action;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import utils.LogUtil;
+import utils.Utils;
+import utils.browsers.DriverProvider;
+import utils.entities.CredentialsCsvEntity;
+import utils.entities.EnvData;
+import utils.entities.SelectorCsvEntity;
+import utils.variables.MavenVariables;
+
+import java.time.Duration;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static utils.Constants.CAST_ERROR_MESSAGE;
+import static utils.Constants.ELEMENT_NOT_FOUND_KEY;
+import static utils.Utils.RECURSION_LIMIT;
+import static utils.variables.BSVariables.ON_MOBILE;
+
+public abstract class PageObject {
+    protected WebDriver driver;
+    protected static final String GENERICS = "Generics";
+    protected static final int DEFAULT_SHORT_WAIT_TIME = 2;
+    public static final int DEFAULT_MEDIUM_WAIT_TIME = 5;
+    protected static final int DEFAULT_LONG_WAIT_TIME = 10;
+    protected static final int DEFAULT_MAX_WAIT_TIME = 20;
+    public static String configFile = MavenVariables.getConfigFile();
+    private static String siteType = MavenVariables.getSiteType();
+    private static List<CredentialsCsvEntity> credentialsList = MavenVariables.getCredentials();
+    private static List<EnvData> credPerEnv = CredentialsCsvEntity.getCredentialPerEnv(credentialsList);
+    protected static EnvData credentials = CredentialsCsvEntity.selectCredentialsPerEnv(credPerEnv, siteType);
+    protected Map<String, ArrayList<SelectorCsvEntity>> selectors = MavenVariables.getSelectorsMap();
+    private final By hamburgerMenuLocator = SelectorCsvEntity.getBySelectorExternal(selectors, GENERICS, "hamburgerMenuLocator");
+    private final By loadingSpinnerLocator = SelectorCsvEntity.getBySelectorExternal(selectors, GENERICS, "loadingSpinnerSelector");
+    private final By filterObjectSelector = SelectorCsvEntity.getBySelectorExternal(selectors, GENERICS, "filterObjectSelector");
+
+    protected void waitForElementVisibility(By byLocator, int timeout) {
+        WebDriverWait wait = DriverProvider.getWebDriverWait(timeout);
+        wait.until(ExpectedConditions.visibilityOfElementLocated(byLocator));
+    }
+
+    public void waitForPageToLoad() {
+        DriverProvider.getWebDriverWait()
+                .until(webDriver -> ((JavascriptExecutor) webDriver)
+                        .executeScript("return document.readyState").equals("complete"));
+    }
+
+    public void wait(int seconds) {
+        try {
+            LogUtil.logger.debug("Sleeping ".concat(String.valueOf(seconds)).concat(" second(s)..."));
+            Thread.sleep((long) seconds * 1000);
+        } catch (InterruptedException e) {
+            LogUtil.logger.debug("Wait exception: ".concat(e.getMessage()));
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    protected List<WebElement> findAllElements(By locator, int timeout) {
+        List<WebElement> elementsList = new ArrayList<>();
+        try {
+            if (isElementVisibleWithinWait(locator, timeout)) {
+                elementsList = DriverProvider.getDriver().findElements(locator);
+            } else {
+                LogUtil.logger.debug("Elements were not found on page: ".concat(locator.toString()));
+            }
+        } catch (ClassCastException cce) {
+            LogUtil.logger.debug(CAST_ERROR_MESSAGE);
+        }
+        return elementsList;
+    }
+
+    public boolean isElementVisibleWithinWait(By byLocator, int maxWaitTime) {
+        try {
+            DriverProvider.getWebDriverWait()
+                    .until(ExpectedConditions.visibilityOfElementLocated(byLocator));
+            return true;
+        } catch (TimeoutException e) {
+            LogUtil.logger.debug("Timeout on element enabled within wait");
+            return false;
+        }
+    }
+
+    protected boolean waitForElementToDisappear(By byLocator, int seconds) {
+        for (int i = 0; i < seconds; i++) {
+            if (isElementVisibleWithinWait(byLocator, 1)) {
+                wait(1);
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean clickHamburgerMenu() {
+        return click(hamburgerMenuLocator, DEFAULT_MEDIUM_WAIT_TIME);
+    }
+
+    public void refreshPage() {
+        refreshPage(DEFAULT_MEDIUM_WAIT_TIME);
+    }
+
+    public void refreshPage(int waitTime) {
+        LogUtil.logger.debug("Page refresh!");
+        wait(waitTime);
+        DriverProvider.getDriver().navigate().refresh();
+        waitForPageToLoad();
+    }
+
+    protected boolean isTextInPageUrl(String text) {
+        try {
+            DriverProvider.getWebDriverWait().until(ExpectedConditions.urlContains(text));
+            return true;
+        } catch (TimeoutException tme) {
+            LogUtil.logger.debug(String.format("Timeout on searching in URL the text.%nUrl: %s%nText: %s", getPageUrl(), text));
+        } catch (Exception e) {
+            LogUtil.logger.debug("Generic Exception: " + e.getMessage());
+        }
+
+        return false;
+    }
+    protected String getPageUrl() {
+        return DriverProvider.getDriver().getCurrentUrl().trim();
+    }
+
+    protected boolean waitForElementToDisappear(WebElement element) {
+        return waitForElementToDisappear(element, DEFAULT_SHORT_WAIT_TIME);
+    }
+
+    public boolean click(By byLocator, int maxWaitTime) {
+//        WebElement element = findElementByVisibility(byLocator, maxWaitTime);
+        final WebElement element = DriverProvider.getWebDriverWait(maxWaitTime)
+                .until(ExpectedConditions.elementToBeClickable(byLocator));
+        if (element == null) {
+            return false;
+        }
+        if (element.isDisplayed()) {
+            try {
+                element.click();
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    protected WebElement findElementByVisibility(By byLocator, int seconds) {
+        WebElement element = null;
+        if (isElementVisibleWithinWait(byLocator, seconds)) {
+            element = DriverProvider.getDriver().findElement(byLocator);
+        } else {
+            LogUtil.logger.debug("Element not visible on page: ".concat(byLocator.toString()));
+        }
+        return element;
+    }
+
+    public void click(WebElement element) {
+        if (element == null) {
+            LogUtil.logger.debug("Element is null!");
+            return;
+        }
+        waitUntilElementIsClickable(element, DEFAULT_LONG_WAIT_TIME);
+        if (ON_MOBILE) {
+            clickJS(element);
+        } else {
+            scrollToElement(element);
+            waitUntilElementIsClickable(element, DEFAULT_LONG_WAIT_TIME);
+            element.click();
+        }
+        LogUtil.logger.debug("Click on element: ".concat(String.valueOf(element)));
+    }
+    public boolean clickWebElement(WebElement element) {
+        if (element == null) {
+            LogUtil.logger.debug("Element is null!");
+            return false;
+        }
+        waitUntilElementIsClickable(element, DEFAULT_LONG_WAIT_TIME);
+        if (ON_MOBILE) {
+            clickJS(element);
+        } else {
+            try {
+                element.click();
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public String getTextFromElement(By by) {
+        try {
+            return findElementByVisibility(by, DEFAULT_LONG_WAIT_TIME).getText().trim();
+        } catch (NoSuchElementException | NullPointerException ex) {
+            return ELEMENT_NOT_FOUND_KEY;
+        }
+    }
+
+    protected void clickJS(WebElement element) {
+        JavascriptExecutor executor = (JavascriptExecutor) DriverProvider.getDriver();
+        executor.executeScript("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center'});", element);
+        executor.executeScript("arguments[0].click();", element);
+    }
+    protected boolean clickJSElement(WebElement element) {
+        if (element == null) {
+            return false;
+        }
+        try {
+            JavascriptExecutor executor = (JavascriptExecutor) DriverProvider.getDriver();
+            executor.executeScript("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center'});", element);
+            executor.executeScript("arguments[0].click();", element);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    protected void scrollToBottomOfThePage() {
+        JavascriptExecutor jse = (JavascriptExecutor) DriverProvider.getDriver();
+        jse.executeScript("window.scrollBy(0,document.body.scrollHeight)", "");
+    }
+
+    protected String getTextElementValue(WebElement element) {
+        try {
+            return element.getText().trim();
+        } catch (NullPointerException npe) {
+            return ELEMENT_NOT_FOUND_KEY;
+        }
+    }
+
+
+    public void scrollToTopOfPage() {
+        JavascriptExecutor jse = (JavascriptExecutor) DriverProvider.getDriver();
+        jse.executeScript("window.scrollTo(0,0)", "");
+    }
+
+    protected boolean sendText(By selector, String text) {
+        WebElement element = findElementByVisibility(selector, DEFAULT_LONG_WAIT_TIME);
+
+        if (element == null) {
+            LogUtil.logger.debug(String.format("Searched Element not found: %s", selector));
+            return false;
+        }
+        try {
+            click(element);
+            element.clear();
+            element.sendKeys(text);
+            return true;
+        } catch (Exception e) {
+            LogUtil.logger.debug(String.format("Action failed with error: %s", e.getMessage()));
+            return false;
+        }
+    }
+
+    protected boolean waitUntilElementIsClickable(WebElement element, int timeout) {
+        try {
+            WebDriverWait wait = new WebDriverWait(DriverProvider.getDriver(), Duration.ofSeconds(timeout));
+            wait.until(ExpectedConditions.elementToBeClickable(element));
+            return true;
+        } catch (Exception ex) {
+            LogUtil.logger.debug("Element is not clickable");
+            return false;
+        }
+    }
+
+    public boolean checkCookies(String cookies) {
+        recursiveWaitForAllSpinnersToDisappear();
+        List<String> cookieList = Arrays.asList(cookies.split(","));
+        List<String> allCookies = DriverProvider.getDriver().manage().getCookies().stream()
+                .map(Cookie::getName)
+                .collect(Collectors.toList());
+        return allCookies.containsAll(cookieList);
+
+    }
+
+    public boolean clickFilterObjectButton() {
+        return click(filterObjectSelector, DEFAULT_LONG_WAIT_TIME);
+    }
+
+    protected boolean waitForElementToBeClickable(By byLocator, int maxWaitTime) {
+        try {
+            DriverProvider.getWebDriverWait().until(ExpectedConditions.elementToBeClickable(byLocator));
+            return true;
+        } catch (TimeoutException e) {
+            LogUtil.logger.debug("Timeout on element enabled within wait");
+            return false;
+        }
+    }
+
+    protected boolean isElementDisplayed(By locatorKey) {
+        try {
+            WebElement el = DriverProvider.getWebDriverWait().until(ExpectedConditions.elementToBeClickable(locatorKey));
+            LogUtil.logger.debug("Element is displayed");
+            return el.isDisplayed();
+        } catch (Exception e) {
+            LogUtil.logger.debug("Timeout waiting for element to disappear");
+            return false;
+        }
+    }
+
+    public WebElement findElement(By byLocator, int maxWaitTime) {
+        try {
+            return (WebElement) findElement(byLocator, maxWaitTime, false);
+        } catch (ClassCastException cce) {
+            LogUtil.logger.debug("Problems while casting to WebElement");
+        }
+        return null;
+    }
+
+    private Object findElement(By byLocator, int maxWaitTime, boolean isList) {
+        if (DriverProvider.getDriver() == null) {
+            LogUtil.logger.debug("Driver is null");
+            return null;
+        }
+
+        if (isList) {
+            List<WebElement> element = null;
+            if (waitForElementToBeClickable(byLocator, maxWaitTime)) {
+                element = DriverProvider.getDriver().findElements(byLocator);
+            } else {
+                LogUtil.logger.debug("Elements were not found on page: ".concat(byLocator.toString()));
+            }
+            return element;
+        } else {
+            WebElement element = null;
+            if (waitForElementToBeClickable(byLocator, maxWaitTime)) {
+                element = DriverProvider.getDriver().findElement(byLocator);
+            } else {
+                LogUtil.logger.debug("Element was not found on page: ".concat(byLocator.toString()));
+            }
+            return element;
+        }
+    }
+
+    public WebElement findElement(By byLocator) {
+        return findElement(byLocator, DEFAULT_MAX_WAIT_TIME);
+    }
+
+    public boolean isElementVisibleWithinWait(By byLocator) {
+        return isElementVisibleWithinWait(byLocator, DEFAULT_MEDIUM_WAIT_TIME);
+    }
+
+    protected void moveToElement(By selector) {
+        WebElement element = DriverProvider.getDriver().findElement(selector);
+        Actions actions = new Actions(DriverProvider.getDriver());
+        actions.moveToElement(element);
+        actions.perform();
+    }
+
+    protected void scrollToElement(WebElement element) {
+        JavascriptExecutor jse = (JavascriptExecutor) DriverProvider.getDriver();
+        jse.executeScript("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center'});", element);
+        LogUtil.logger.debug("I scrolled to element: ".concat(element.toString()));
+    }
+
+    protected void scrollToElement(By selector) {
+        WebElement element = DriverProvider.getDriver().findElement(selector);
+        scrollToElement(element);
+    }
+
+    public Set<Cookie> getCurrentUserCookies() {
+        return DriverProvider.getDriver().manage().getCookies();
+    }
+
+    protected WebElement findElementByVisibility(By byLocator) {
+        WebElement element = null;
+        if (isElementVisibleWithinWait(byLocator, DEFAULT_MAX_WAIT_TIME)) {
+            element = DriverProvider.getDriver().findElement(byLocator);
+        } else {
+            LogUtil.logger.debug("Element not visible on page: ".concat(byLocator.toString()));
+        }
+        return element;
+    }
+
+    public boolean clickOutsideModal(By byLocator) {
+        try {
+            WebElement successMessage = findElementByVisibility(byLocator);
+            int xOffset = successMessage.getSize().width;
+            int yOffset = successMessage.getSize().height;
+            Actions action = new Actions(DriverProvider.getDriver());
+            action.moveToElement(successMessage, -xOffset, -yOffset).click().build().perform();
+            return true;
+        } catch (Exception e) {
+            LogUtil.logger.debug("Could not click outside element: ".concat(e.getMessage()));
+            return false;
+        }
+    }
+
+    public void clickOnTheMiddleOfTheElement(WebElement element, WebDriver webdriver) {
+        wait(DEFAULT_SHORT_WAIT_TIME);
+        Actions middleButton = new Actions(webdriver);
+        Action a = middleButton.moveToElement(element).click().build();
+        LogUtil.logger.debug("Clicking middle of element: ".concat(element.getTagName()));
+        a.perform();
+        wait(DEFAULT_SHORT_WAIT_TIME);
+    }
+
+    protected void scrollElementToMiddleOfScreen(By selector) {
+        WebElement element = findElementByVisibility(selector);
+
+        String scrollElementIntoMiddle = "var viewPortHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);"
+                + "var elementTop = arguments[0].getBoundingClientRect().top;"
+                + "window.scrollBy(0, elementTop-(viewPortHeight/2));";
+
+        ((JavascriptExecutor) DriverProvider.getDriver()).executeScript(scrollElementIntoMiddle, element);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear() {
+        return recursiveWaitForAllSpinnersToDisappear(RECURSION_LIMIT, false);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear(boolean useRefreshPage) {
+        return recursiveWaitForAllSpinnersToDisappear(RECURSION_LIMIT, useRefreshPage);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear(int maxStackSize) {
+        return recursiveWaitForAllSpinnersToDisappear(maxStackSize, false);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear(int maxStackSize, boolean useRefreshPage) {
+        return recursiveWaitForAllSpinnersToDisappear(loadingSpinnerLocator, maxStackSize, useRefreshPage);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear(By spinnerLocator) {
+        return recursiveWaitForAllSpinnersToDisappear(spinnerLocator, RECURSION_LIMIT, false);
+    }
+
+    public boolean recursiveWaitForAllSpinnersToDisappear(By spinnerLocator, int maxStackSize, boolean useRefreshPage) {
+        Utils.limitRecursion(maxStackSize);
+
+        if (ON_MOBILE) {
+            return true;
+        }
+
+        List<WebElement> allSpinners = findAllElements(spinnerLocator, DEFAULT_SHORT_WAIT_TIME);
+        for (WebElement spinner : allSpinners) {
+            if (!waitForElementToDisappear(spinner, DEFAULT_SHORT_WAIT_TIME)) {
+                if (useRefreshPage) {
+                    refreshPage(DEFAULT_SHORT_WAIT_TIME);
+                }
+                recursiveWaitForAllSpinnersToDisappear(maxStackSize, useRefreshPage);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    protected boolean waitForElementToDisappear(WebElement element, int waitTime) {
+        try {
+            DriverProvider.getWebDriverWait(waitTime).until(ExpectedConditions.invisibilityOf(element));
+            return true;
+        } catch (Exception e) {
+            LogUtil.logger.debug("Timeout waiting for element to disappear");
+            return false;
+        }
+    }
+
+}
+
+
+************************RUF****************
+
+package TestRunner.pages;
+import java.util.List;
+
+import TestRunner.pages.PageObject;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+
+import utils.LogUtil;
+import utils.entities.SelectorCsvEntity;
+
+public class RUFPage extends PageObject {
+
+    private static final String RUF_PAGE = "RUFPage";
+    private final By tableRows = SelectorCsvEntity.getBySelectorExternal(selectors, RUF_PAGE, "tableRows");
+    private final By emptyTableError = SelectorCsvEntity.getBySelectorExternal(selectors, RUF_PAGE, "emptyTableError");
+
+    public boolean isEmptyTableErrorDisplayed() {
+        return isElementVisibleWithinWait(emptyTableError);
+    }
+
+    public List<WebElement> getTableRows() {
+        LogUtil.logger.debug("Getting table rows: ".concat(String.valueOf(tableRows)));
+        return findAllElements(tableRows, DEFAULT_MEDIUM_WAIT_TIME);
+    }
+
+}
+
+
+**************************UserListPage***************
+
+package TestRunner.pages;
+
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
+import org.openqa.selenium.*;
+import utils.browsers.DriverProvider;
+
+import java.util.HashMap;
+import java.util.List;
+
+import static org.junit.Assert.assertTrue;
+import static utils.entities.SelectorCsvEntity.getBySelectorExternal;
+
+public class UserListPage extends RUFPage {
+    private static final String USER_LIST_PAGE = "UserListPage";
+    private final By addUserBtnSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "addUserBtnSelector");
+    private final By shadowRootSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "shadowRootSelector");
+    private final By acceptAllCookiesSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "acceptAllCookiesSelector");
+    private final By addUserTitleSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "addUserTitleSelector");
+    private final By firstNameSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "firstNameSelector");
+    private final By lastNameSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "lastNameSelector");
+    private final By emailSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "emailSelector");
+    private final By countryDropDownSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "countryDropDownSelector");
+    private final By countryDropDownListSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "countryDropDownListSelector");
+    private final By saveButtonSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "saveButtonSelector");
+    private final By addUserToasterMsgSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "addUserToasterMsgSelector");
+    private final By adminCheckboxSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "adminCheckboxSelector");
+    private final By addTitleSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "addTitleSelector");
+    private final By countryCodephoneNumberSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "countryCodephoneNumberSelector");
+    private final By phoneNumberSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "phoneNumberSelector");
+    private final By mobileNumberSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "mobileNumberSelector");
+    private final By jobTitleSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "jobTitleSelector");
+    private final By sortListSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "sortListSelector");
+    private final By recentlyAddedListSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "recentlyAddedListSelector");
+    private final By firstNameSearchSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "firstNameSearchSelector");
+    private final By lastNameSearchSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "lastNameSearchSelector");
+    private final By emailSearchSelector = getBySelectorExternal(selectors, USER_LIST_PAGE, "emailSearchSelector");
+    public HashMap<String, String> userDetails;
+
+    public boolean clickAddUUser() {
+        return click(addUserBtnSelector, DEFAULT_MEDIUM_WAIT_TIME);
+
+    }
+
+    public void clickAcceptAll() {
+        wait(DEFAULT_LONG_WAIT_TIME);
+        WebElement webElement = DriverProvider.getDriver().findElement(shadowRootSelector);
+        SearchContext searchContext = webElement.getShadowRoot();
+        searchContext.findElement(acceptAllCookiesSelector).click();
+    }
+
+    public boolean isAddUserScreenDisplayed() {
+        return isElementVisibleWithinWait(addUserTitleSelector);
+    }
+
+    public boolean enterTextInField(String inputText) {
+        boolean enterText = false;
+        if (inputText.equalsIgnoreCase("FirstName")) {
+            enterText = sendText(firstNameSelector, userDetails.get("firstName"));
+        }
+
+        if (inputText.equalsIgnoreCase("LastName")) {
+            enterText = sendText(lastNameSelector, userDetails.get("lastName"));
+        }
+
+        if (inputText.equalsIgnoreCase("Email")) {
+            enterText = sendText(emailSelector, userDetails.get("email"));
+        }
+        if (inputText.equalsIgnoreCase("JobTitle")) {
+            enterText = sendText(jobTitleSelector, RandomStringUtils.randomAlphabetic(5));
+        }
+        return enterText;
+    }
+
+    public boolean selectCountry(String country) {
+        boolean isCountrySelected = false;
+        click(countryDropDownSelector, DEFAULT_MEDIUM_WAIT_TIME);
+        List<WebElement> dropdownItems = findAllElements(countryDropDownListSelector, DEFAULT_LONG_WAIT_TIME).stream().toList();
+        if (dropdownItems == null || dropdownItems.isEmpty()) {
+            return false;
+        }
+        for (WebElement option : dropdownItems) {
+            if (getTextElementValue(option).equalsIgnoreCase(country)) {
+                WebElement webElement = findElement(By.xpath(String.format("//li[@role='option']//span[contains(text(),'%s')]", country)));
+                clickJS(webElement);
+                isCountrySelected = true;
+                break;
+            } else {
+                isCountrySelected = false;
+            }
+        }
+
+        return isCountrySelected;
+    }
+
+    public boolean selectApplication(String application) {
+        wait(DEFAULT_MEDIUM_WAIT_TIME);
+        WebElement webElement = findElement(By.xpath(String.format("//label[text()='%s']/..//p-toggleswitch", application)));
+        return clickWebElement(webElement);
+    }
+
+    public boolean clickSaveButton() {
+        return click(saveButtonSelector, DEFAULT_SHORT_WAIT_TIME);
+    }
+
+    public boolean isSuccessToasterMessageDisplayed() {
+        wait(DEFAULT_LONG_WAIT_TIME);
+        return isElementVisibleWithinWait(addUserToasterMsgSelector, DEFAULT_MAX_WAIT_TIME);
+    }
+
+    public void clickAdminCheckbox() {
+        waitForElementToBeClickable(adminCheckboxSelector, DEFAULT_MEDIUM_WAIT_TIME);
+        clickOnTheMiddleOfTheElement(findElement(adminCheckboxSelector), DriverProvider.getDriver());
+    }
+
+    public boolean enterOptionalFields(String inputText) {
+        boolean enterText = false;
+        if (inputText.equalsIgnoreCase("Title")) {
+            click(findElement(By.xpath(String.format("//label[contains(text(),'%s')]/..//span[@role='combobox']", inputText))));
+            click(addTitleSelector, DEFAULT_SHORT_WAIT_TIME);
+            enterText = click(jobTitleSelector, DEFAULT_SHORT_WAIT_TIME);
+        }
+        if (inputText.equalsIgnoreCase("Phone number")) {
+            wait(DEFAULT_MEDIUM_WAIT_TIME);
+            click(findElement(By.xpath(String.format("//label[contains(text(),'%s')]/..//span[@role='combobox']", inputText))));
+            wait(DEFAULT_MEDIUM_WAIT_TIME);
+            moveToElement(countryCodephoneNumberSelector);
+            clickOnTheMiddleOfTheElement(findElement(countryCodephoneNumberSelector), DriverProvider.getDriver());
+            enterText = sendText(phoneNumberSelector, RandomStringUtils.randomNumeric(10));
+        }
+        if (inputText.equalsIgnoreCase("Mobile number")) {
+            wait(DEFAULT_MEDIUM_WAIT_TIME);
+            click(findElement(By.xpath(String.format("//label[contains(text(),'%s')]/..//span[@role='combobox']", inputText))));
+            wait(DEFAULT_MEDIUM_WAIT_TIME);
+            clickOnTheMiddleOfTheElement(findElement(countryCodephoneNumberSelector), DriverProvider.getDriver());
+            enterText = sendText(mobileNumberSelector, RandomStringUtils.randomNumeric(10));
+        }
+        return enterText;
+    }
+
+    public HashMap<String, String> generateRandomUserNamesAndEmail() {
+        userDetails = new HashMap<>();
+        String firstName = RandomStringUtils.randomAlphabetic(5) + "firstName";
+        String lastName = RandomStringUtils.randomAlphabetic(5) + "lastName";
+        String email = firstName + "." + lastName + "@worldpay.com";
+        userDetails.put("firstName", firstName);
+        userDetails.put("lastName", lastName);
+        userDetails.put("email", email);
+        return userDetails;
+    }
+
+    public boolean isUserCreated() {
+        click(findElement(sortListSelector, DEFAULT_MEDIUM_WAIT_TIME));
+        wait(DEFAULT_MEDIUM_WAIT_TIME);
+        moveToElement((recentlyAddedListSelector));
+        clickOnTheMiddleOfTheElement(findElement(recentlyAddedListSelector),DriverProvider.getDriver());
+        wait(DEFAULT_LONG_WAIT_TIME)        ;
+        return  getTextFromElement(firstNameSearchSelector).contains(userDetails.get("firstName")) &&
+                getTextFromElement(lastNameSearchSelector).contains(userDetails.get("lastName")) &&
+                getTextFromElement(emailSearchSelector).contains(userDetails.get("email"));
+    }
+}
+
+
+
+**********************************************STEPS*********************
+
+
+AddUserStep************
+
+package TestRunner.steps;
+
+import TestRunner.BaseUtil;
+import TestRunner.pages.LoginPage;
+import TestRunner.pages.UserListPage;
+import customexceptions.PageNavigationException;
+import io.cucumber.java.en.And;
+import io.cucumber.java.en.Then;
+import org.junit.Assert;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+
+public class AddUserStep {
+    private final LoginPage loginPage = new LoginPage();
+    private final UserListPage userListPage = new UserListPage();
+
+
+    public AddUserStep() throws Exception {
+    }
+
+    @And("I click on Add user button")
+    public void iClickOnAddUserButton() throws InterruptedException {
+        Assert.assertTrue("Didnt click on Add User",userListPage.clickAddUUser());
+    }
+
+    @And("I accept the cookies")
+    public void iAcceptTheCookies() {
+       userListPage.clickAcceptAll();
+    }
+
+    @Then("Add user screen is displayed")
+    public void addUserScreenIsDisplayed() {
+    Assert.assertTrue("Add User screen is not displayed", userListPage.isAddUserScreenDisplayed());
+    }
+
+    @And("I enter {string}")
+    public void iEnter(String inputText) {
+        Assert.assertTrue("Didn't enter the text in " + inputText + " field", userListPage.enterTextInField(inputText));
+    }
+
+    @And("I select Country as {string}")
+    public void iSelectCountryAs(String inputText) {
+        Assert.assertTrue("Didn't select the country as " + inputText, userListPage.selectCountry(inputText));
+    }
+
+    @And("I select {string} application")
+    public void iSelectApplication(String inputText) {
+        Assert.assertTrue("Didnt click on application",userListPage.selectApplication(inputText));
+    }
+
+    @And("I create the user")
+    public void iCreateTheUser() {
+    Assert.assertTrue("Didnt click on save button", userListPage.clickSaveButton());
+    }
+
+    @And("show see success toaster message")
+    public void showSeeSuccessToasterMessage() {
+    Assert.assertTrue("Success toaster message is not displayed", userListPage.isSuccessToasterMessageDisplayed());
+    }
+    @And("I click on Mark as Admin checkbox")
+    public void iClickMarkAdminCheckBox() {
+        userListPage.clickAdminCheckbox();
+    }
+    @And("I enter optional field {string}")
+    public void iEnterOptionalFields(String inputText) {
+        Assert.assertTrue("Didn't enter the text in " + inputText + " field", userListPage.enterOptionalFields(inputText));
+    }
+    @And("I generate randome firstname,lastname and email")
+    public void iGenerateUserNamesEmail() {
+        userListPage.generateRandomUserNamesAndEmail();
+    }
+
+    @And("I verify that the user is created with {string} and {string} in the user list")
+    public void iVerifyThatTheUserIsCreatedWithAndInTheUserList(String input,String input1) {
+    Assert.assertTrue("User is not created with", userListPage.isUserCreated());
+    }
+}
+
+
+************************LoginStep******************
+
+
+package TestRunner.steps;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static utils.Constants.*;
+import static utils.ManageFiles.getValueFromFile;
+import static utils.Utils.allUsersCookies;
+import static utils.Utils.loggedUserType;
+import static utils.enums.UserTypesEnum.ADMIN_USER;
+import static utils.variables.BSVariables.ON_MOBILE;
+import static utils.variables.MavenVariables.USE_COOKIES_LOGIN;
+import static utils.variables.MavenVariables.getSiteType;
+
+import java.lang.invoke.MethodHandles;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.junit.jupiter.api.Assumptions;
+import org.openqa.selenium.Cookie;
+import org.openqa.selenium.WebDriverException;
+
+import io.cucumber.java.en.And;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import TestRunner.pages.AccountsPage;
+import TestRunner.pages.LoginPage;
+import utils.LogUtil;
+
+public class LoginStep {
+
+    private final LoginPage loginPage = new LoginPage();
+    private final AccountsPage accountsPage = new AccountsPage();
+    public static boolean IDPIssue;
+    private static final String IDP_PAGE_FORM_TITLE = getValueFromFile("IdpPageFormTitle");
+    private final String loggingStepName = MethodHandles.lookup().lookupClass().getSimpleName() + " - ";
+
+    @Given("I login to GSI via IDP as {} user")
+    public void iLoginToPortalAsAdminUser(String userType) {
+        String pageType = ADMIN_KEY;
+        boolean loginWithCookies = USE_COOKIES_LOGIN &&
+                getSiteType().contains("AWS") &&
+                allUsersCookies.containsKey(userType);
+        try {
+            if (loginWithCookies) {
+                loginPage.openPageWithCookies(userType);
+                LogUtil.logger.info(loggingStepName + "Logged in using cookies as user: ".concat(userType));
+            } else {
+
+                doStandardLogin(userType, pageType);
+                LogUtil.logger.info(loggingStepName + "Logged in as user: ".concat(userType));
+            }
+        } catch (Exception | AssertionError e) {
+            IDPIssue = true;
+            LogUtil.logger.error("IDP Login Failed!\n".concat(e.getMessage()));
+        }
+    }
+
+    @Then("IDP Login page is loaded successfully")
+    public void idpPageLoaded() {
+        assertAll(
+                () -> assertTrue("Log out IDP page is not opened!",
+                        loginPage.verifyIdpPageUrl(ADMIN_KEY)),
+                () -> assertEquals("Log out IDP page is not loaded!",
+                        IDP_PAGE_FORM_TITLE, loginPage.getLoginPageFormTitle())
+        );
+        LogUtil.logger.info(loggingStepName + "Log out IDP page is displayed");
+    }
+
+    @And("I logout from TRS")
+    public void iLogoutFromTRS() {
+        if (ON_MOBILE) {
+            assertTrue("Failed to click hamburger menu", accountsPage.clickHamburgerMenu());
+        }
+        assertTrue("Failed when clicking on log out link!", accountsPage.clickLogOutLink());
+        LogUtil.logger.info(loggingStepName + "I logout from TRS");
+    }
+
+    @Then("The {string} page is displayed")
+    public void isPageDisplayed(String page) {
+        accountsPage.recursiveWaitForAllSpinnersToDisappear();
+        if (accountsPage.isEmptyTableErrorDisplayed()) {
+            accountsPage.refreshPage();
+        }
+
+        Assumptions.assumingThat(page.equalsIgnoreCase("Accounts"),
+                () -> {
+                    try {
+                        assertTrue("Accounts page is NOT displayed or incorrect text displayed!",
+                                accountsPage.isAccountsPageDisplayed());
+                    } catch (Exception | AssertionError e) {
+                        IDPIssue = true;
+                        LogUtil.logger.info(loggingStepName + "IDP Login Failed!\n".concat(e.getMessage()));
+                    }
+                }
+        );
+
+        LogUtil.logger.info(loggingStepName + page.concat(" is displayed"));
+    }
+
+    private void goToIdpPage(String pageType) {
+        assertTrue(String.format("Didn't reach TRS %s url", pageType),
+                loginPage.goToPage(pageType));
+        LogUtil.logger.info(String.format(loggingStepName + "Reached MBD URL: %s", pageType));
+    }
+
+    private void verifyIdpLoginPage(String pageType) {
+        try {
+            Assumptions.assumingThat(getSiteType().equalsIgnoreCase("AWS"),
+                () -> assertAll(
+                    () -> assertTrue("Login page is not opened!",
+                        loginPage.verifyIdpPageUrl(pageType)),
+                    () -> assertEquals("Login page is not loaded!",
+                        IDP_PAGE_FORM_TITLE, loginPage.getLoginPageFormTitle()))
+            );
+        } catch (WebDriverException wde) {
+            LogUtil.logger.info(loggingStepName + "Appium Exception found: ".concat(wde.getMessage()));
+            goToIdpPage(pageType);
+            Assumptions.assumingThat(getSiteType().equalsIgnoreCase("AWS"),
+                    () -> assertAll(
+                            () -> assertTrue("Login page is not opened!",
+                                    loginPage.verifyIdpPageUrl(pageType)),
+                            () -> assertEquals("Login page is not loaded!",
+                                    IDP_PAGE_FORM_TITLE, loginPage.getLoginPageFormTitle()))
+            );
+        }
+        LogUtil.logger.info(loggingStepName + "Login page is displayed");
+    }
+
+    private boolean enterIdpCredentials(String userType) {
+        LogUtil.logger.info(loggingStepName + "Entering credentials for user: " + userType);
+        return loginPage.enterIdpCredentials(userType);
+    }
+
+    private void verifyRedirectToProperLocation(String pageType) {
+        if (getSiteType().equalsIgnoreCase("AWS")) {
+            verifyRedirectForAwsEnv(pageType);
+        } else {
+            goToIdpPage(pageType);
+            setLoggedUserCookies();
+        }
+    }
+
+    private void skipAuthenticator() {
+        assertTrue("Failed to click Skip on Select Token Generator page!",
+                loginPage.skipAuthenticatorSetup());
+    }
+
+    private void verifyRedirectForAwsEnv(String pageType) {
+        if (isDeployerUrlPresent()) {
+            goToIdpPage(pageType);
+            setLoggedUserCookies();
+        } else {
+            fail("Deployer page not displayed!");
+        }
+    }
+
+    private void setLoggedUserCookies() {
+        Set<Cookie> temporaryCookieSet = new HashSet<>(loginPage.getCurrentUserCookies());
+        allUsersCookies.put(loggedUserType, temporaryCookieSet);
+    }
+
+    private boolean isDeployerUrlPresent() {
+        boolean isDeployerUrlPresent;
+
+        try {
+            isDeployerUrlPresent = loginPage.verifyPageUrl(MBD_DEPLOYER_KEY);
+            if (ON_MOBILE && !isDeployerUrlPresent) {
+                goToIdpPage(MBD_DEPLOYER_KEY);
+                isDeployerUrlPresent = loginPage.verifyPageUrl(MBD_DEPLOYER_KEY);
+            }
+        } catch (WebDriverException wde) {
+            LogUtil.logger.info(loggingStepName + "Appium Exception found: ".concat(wde.getMessage()));
+            goToIdpPage(MBD_DEPLOYER_KEY);
+            isDeployerUrlPresent = loginPage.verifyPageUrl(MBD_DEPLOYER_KEY);
+        }
+
+        return isDeployerUrlPresent;
+    }
+
+    private void skipPasswordChange() {
+        assertAll(
+            () -> assertTrue("Idp password expiry skip button not clicked",
+                loginPage.clickExpiringPasswordSkipButton()),
+            () -> assertTrue("Idp password expiry reminder no button not clicked",
+                loginPage.clickExpiringPasswordReminderNoButton())
+        );
+        LogUtil.logger.info(loggingStepName + "Password expiry screen skipped");
+    }
+
+    private void verifyRedirectForNonAwsEnv(String pageType) {
+        if (loginPage.verifyPageUrl(pageType)) {
+            LogUtil.logger.info(String.format(loggingStepName + "Reached MBD %s url", pageType));
+        } else if (loginPage.isExpiringPasswordDisplayed()) {
+            skipPasswordChange();
+        } else {
+            fail("Application or Password Expiry pages not displayed");
+        }
+    }
+
+    private void doStandardLogin(String userType, String pageType) {
+        if (getSiteType().contains("AWS")) {
+            doAWSLogin(userType, pageType);
+        } else {
+            doUATLogin(userType, pageType);
+        }
+    }
+
+    private void doAWSLogin(String userType, String pageType) {
+        goToIdpPage(pageType);
+        verifyIdpLoginPage(pageType);
+        enterIdpCredentials(userType);
+        skipAuthenticator();
+        loggedUserType = userType;
+        verifyRedirectToProperLocation(pageType);
+    }
+
+    private void doUATLogin(String userType, String pageType) {
+        goToIdpPage(pageType);
+        loginPage.waitForPageToLoad();
+        loginPage.wait(10);
+        enterIdpCredentials(userType);
+        loginPage.recursiveWaitForAllSpinnersToDisappear();
+    }
+
+    @Then("User List page is displayed")
+    public void userListPageIsDisplayed() {
+                assertTrue("Page is NOT displayed or incorrect text displayed!",
+                        loginPage.isUserListPageDisplayed());
+        LogUtil.logger.info(loggingStepName + "Dashboard page is displayed on PROD");
+    }
+}
+
+
+*****************dependencyreducedPOM************
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <artifactId>gsi-ui-automation-tools</artifactId>
+    <groupId>com.worldpay.ds</groupId>
+    <version>0-SNAPSHOT</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>gsi-ui-automation</artifactId>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${maven-shade-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/versions/9/module-info</exclude>
+                    <exclude>org/apache/commons/logging/Log</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer>
+                  <mainClass>TestRunner.TestRunner</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>integration-test</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>TestRunner.TestRunner</mainClass>
+          <skip>${skipTests}</skip>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${build-helper-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/test/java</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <release>17</release>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <testFailureIgnore>true</testFailureIgnore>
+          <parallel>methods</parallel>
+          <useUnlimitedThreads>true</useUnlimitedThreads>
+          <perCoreThreadCount>false</perCoreThreadCount>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>net.masterthought</groupId>
+        <artifactId>maven-cucumber-reporting</artifactId>
+        <version>${maven-cucumber-reporting.version}</version>
+        <executions>
+          <execution>
+            <id>execution</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <projectName>GSI-UI_SIT_${siteType}_${browserType}</projectName>
+              <outputDirectory>../target/cucumber-report-AWS-chrome</outputDirectory>
+              <cucumberOutput>${project.build.directory}/cucumber.json</cucumberOutput>
+              <checkBuildResult>false</checkBuildResult>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>${properties-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>write-project-properties</goal>
+            </goals>
+            <configuration>
+              <outputFile>../target/classes/my.properties</outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  <repositories>
+    <repository>
+      <releases>
+        <updatePolicy>never</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </snapshots>
+      <id>maven-releases</id>
+      <name>Maven Releases</name>
+      <url>https://nexus.luigi.worldpay.io/repository/maven-releases/</url>
+    </repository>
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </releases>
+      <snapshots>
+        <updatePolicy>never</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </snapshots>
+      <id>maven-snapshots</id>
+      <name>Maven Snapshots</name>
+      <url>https://nexus.luigi.worldpay.io/repository/maven-snapshots/</url>
+    </repository>
+    <repository>
+      <id>maven-public</id>
+      <name>Maven Public</name>
+      <url>https://nexus.luigi.worldpay.io/repository/maven-public/</url>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.30</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <version>2.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <distributionManagement>
+    <repository>
+      <uniqueVersion>false</uniqueVersion>
+      <id>maven-releases</id>
+      <name>Maven Releases</name>
+      <url>https://nexus.luigi.worldpay.io/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>maven-snapshots</id>
+      <name>Maven Snapshots</name>
+      <url>https://nexus.luigi.worldpay.io/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <properties>
+    <webdrivermanager.version>5.9.2</webdrivermanager.version>
+    <maven.compiler.release>${java.version}</maven.compiler.release>
+    <javafaker.version>0.15</javafaker.version>
+    <guava.version>33.4.5-jre</guava.version>
+    <hamcrest.version>2.2</hamcrest.version>
+    <cucumber-java.version>7.11.0</cucumber-java.version>
+    <browserType>chrome</browserType>
+    <testng.version>7.10.2</testng.version>
+    <slf4j.version>2.0.16</slf4j.version>
+    <rest-assured.version>5.5.0</rest-assured.version>
+    <commons-lang3.version>3.9</commons-lang3.version>
+    <validation-api.version>2.0.1.Final</validation-api.version>
+    <junit.version>4.13.1</junit.version>
+    <skipTests>true</skipTests>
+    <maven-cucumber-reporting.version>3.10.0</maven-cucumber-reporting.version>
+    <mybatis.version>3.5.6</mybatis.version>
+    <siteType>AWS</siteType>
+    <testSetType>@smoke</testSetType>
+    <log4j2.version>2.22.1</log4j2.version>
+    <selenium-java.version>4.26.0</selenium-java.version>
+    <java.version>17</java.version>
+    <maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
+    <maven-compiler-plugin.version>3.9.0</maven-compiler-plugin.version>
+    <browserstack-local-java.version>1.0.3</browserstack-local-java.version>
+    <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
+    <properties-maven-plugin.version>1.0.0</properties-maven-plugin.version>
+    <commons-compress.version>1.26.0</commons-compress.version>
+    <cucumber-reporting.version>5.8.1</cucumber-reporting.version>
+    <junit-jupiter-api.version>5.12.0</junit-jupiter-api.version>
+    <libphonenumber.version>8.10.11</libphonenumber.version>
+    <lombok.version>1.18.30</lombok.version>
+    <cucumber-jvm-parallel-plugin.version>5.0.0</cucumber-jvm-parallel-plugin.version>
+    <maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+    <json-schema-validator.version>3.2.0</json-schema-validator.version>
+    <javax-annotation.version>1.3.2</javax-annotation.version>
+    <poi-ooxml.version>5.3.0</poi-ooxml.version>
+    <plexus-utils.version>3.4.2</plexus-utils.version>
+    <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
+  </properties>
+</project>
+
+
+
+***********************pom*************
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<parent>
+		<artifactId>gsi-ui-automation-tools</artifactId>
+		<version>0-SNAPSHOT</version>
+		<groupId>com.worldpay.ds</groupId>
+	</parent>
+
+	<artifactId>gsi-ui-automation</artifactId>
+	<modelVersion>4.0.0</modelVersion>
+
+	<properties>
+		<selenium-java.version>4.26.0</selenium-java.version>
+		<maven-compiler-plugin.version>3.9.0</maven-compiler-plugin.version>
+		<maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+		<maven-cucumber-reporting.version>3.10.0</maven-cucumber-reporting.version>
+		<exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
+		<maven-shade-plugin.version>3.1.1</maven-shade-plugin.version>
+		<build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
+		<cucumber-jvm-parallel-plugin.version>5.0.0</cucumber-jvm-parallel-plugin.version>
+		<cucumber-reporting.version>5.8.1</cucumber-reporting.version>
+		<cucumber-java.version>7.11.0</cucumber-java.version>
+		<junit.version>4.13.1</junit.version>
+		<properties-maven-plugin.version>1.0.0</properties-maven-plugin.version>
+		<testng.version>7.10.2</testng.version>
+		<log4j2.version>2.22.1</log4j2.version>
+		<rest-assured.version>5.5.0</rest-assured.version>
+		<json-schema-validator.version>3.2.0</json-schema-validator.version>
+		<mybatis.version>3.5.6</mybatis.version>
+		<poi-ooxml.version>5.3.0</poi-ooxml.version>
+		<webdrivermanager.version>5.9.2</webdrivermanager.version>
+		<junit-jupiter-api.version>5.12.0</junit-jupiter-api.version>
+		<validation-api.version>2.0.1.Final</validation-api.version>
+		<javafaker.version>0.15</javafaker.version>
+		<libphonenumber.version>8.10.11</libphonenumber.version>
+		<commons-lang3.version>3.9</commons-lang3.version>
+		<slf4j.version>2.0.16</slf4j.version>
+		<browserstack-local-java.version>1.0.3</browserstack-local-java.version>
+		<guava.version>33.4.5-jre</guava.version>
+		<javax-annotation.version>1.3.2</javax-annotation.version>
+		<lombok.version>1.18.30</lombok.version>
+		<hamcrest.version>2.2</hamcrest.version>
+		<plexus-utils.version>3.4.2</plexus-utils.version>
+		<commons-compress.version>1.26.0</commons-compress.version>
+
+		<java.version>17</java.version>
+		<maven.compiler.release>${java.version}</maven.compiler.release>
+
+		<browserType>chrome</browserType>
+		<siteType>AWS</siteType>
+		<testSetType>@smoke</testSetType>
+		<skipTests>true</skipTests>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>${maven-shade-plugin.version}</version>
+          <executions>
+			  <execution>
+				  <phase>package</phase>
+				  <goals>
+					  <goal>shade</goal>
+				  </goals>
+				  <configuration>
+					  <filters>
+						  <filter>
+							  <artifact>*:*</artifact>
+							  <excludes>
+                                  <exclude>module-info.class</exclude>
+                                  <exclude>META-INF/*.SF</exclude>
+                                  <exclude>META-INF/*.DSA</exclude>
+                                  <exclude>META-INF/*.RSA</exclude>
+								  <exclude>META-INF/versions/9/module-info</exclude>
+								  <!--								  <exclude>gherkin/deps/com/google/gson/internal/Streams$AppendableWriter</exclude>-->
+								  <!--								  <exclude>gherkin/deps/com/google/gson/JsonDeserializer</exclude>-->
+								  <exclude>org/apache/commons/logging/Log</exclude>
+							  </excludes>
+						  </filter>
+					  </filters>
+					  <transformers>
+						  <transformer
+								  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+							  <mainClass>TestRunner.TestRunner</mainClass>
+						  </transformer>
+					  </transformers>
+				  </configuration>
+			  </execution>
+		  </executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>${exec-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>TestRunner.TestRunner</mainClass>
+					<skip>${skipTests}</skip>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>${build-helper-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/test/java</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${maven-compiler-plugin.version}</version>
+				<configuration>
+					<release>17</release>
+					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>${maven-surefire-plugin.version}</version>
+				<configuration>
+										<testFailureIgnore>true</testFailureIgnore>
+					<parallel>methods</parallel>
+					<useUnlimitedThreads>true</useUnlimitedThreads>
+					<perCoreThreadCount>false</perCoreThreadCount>
+<!--					Will be used when executing in parallel with maven lifecycle-->
+					<!--										<suiteXmlFiles>-->
+					<!--											<suiteXmlFile>testng.xml</suiteXmlFile>-->
+					<!--										</suiteXmlFiles>-->
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>net.masterthought</groupId>
+				<artifactId>maven-cucumber-reporting</artifactId>
+				<version>${maven-cucumber-reporting.version}</version>
+				<executions>
+					<execution>
+						<id>execution</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<projectName>GSI-UI_SIT_${siteType}_${browserType}</projectName>
+							<outputDirectory>../target/cucumber-report-AWS-chrome</outputDirectory>
+							<cucumberOutput>${project.build.directory}/cucumber.json</cucumberOutput>
+							<checkBuildResult>false</checkBuildResult>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>properties-maven-plugin</artifactId>
+				<version>${properties-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>write-project-properties</goal>
+						</goals>
+						<configuration>
+							<outputFile>../target/classes/my.properties</outputFile>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.googlecode.libphonenumber</groupId>
+			<artifactId>libphonenumber</artifactId>
+			<version>${libphonenumber.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-java</artifactId>
+            <version>${cucumber-java.version}</version>
+        </dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit.version}</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-picocontainer</artifactId>
+			<version>${cucumber-java.version}</version>
+		</dependency>
+		<dependency>
+        	<groupId>io.cucumber</groupId>
+        	<artifactId>cucumber-junit</artifactId>
+			<version>${cucumber-java.version}</version>
+        </dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-testng</artifactId>
+			<version>${cucumber-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>gherkin</artifactId>
+			<version>27.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>${testng.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+            <version>${log4j2.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j2.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j2.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.mojo</groupId>
+			<artifactId>properties-maven-plugin</artifactId>
+			<version>${properties-maven-plugin.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.codehaus.plexus</groupId>
+					<artifactId>plexus-utils</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
+			<version>${plexus-utils.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
+			<version>${rest-assured.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>${json-schema-validator.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-core</artifactId>
+			<version>${cucumber-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.temyers</groupId>
+			<artifactId>cucumber-jvm-parallel-plugin</artifactId>
+			<version>${cucumber-jvm-parallel-plugin.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>commons-io</groupId>
+					<artifactId>commons-io</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>commons-collections</groupId>
+					<artifactId>commons-collections</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.velocity</groupId>
+					<artifactId>velocity</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.14.0</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-collections</groupId>
+			<artifactId>commons-collections</artifactId>
+			<version>3.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis</artifactId>
+			<version>${mybatis.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>${poi-ooxml.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.commons</groupId>
+					<artifactId>commons-compress</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-compress</artifactId>
+			<version>${commons-compress.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.masterthought</groupId>
+			<artifactId>cucumber-reporting</artifactId>
+			<version>${cucumber-reporting.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-chrome-driver</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-firefox-driver</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-ie-driver</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-safari-driver</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-edge-driver</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.github.bonigarcia</groupId>
+			<artifactId>webdrivermanager</artifactId>
+			<version>${webdrivermanager.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>${junit-jupiter-api.version}</version>
+						<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.validation</groupId>
+			<artifactId>validation-api</artifactId>
+			<version>${validation-api.version}</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.github.javafaker</groupId>
+			<artifactId>javafaker</artifactId>
+			<version>${javafaker.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.yaml</groupId>
+					<artifactId>snakeyaml</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-ext</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.browserstack</groupId>
+			<artifactId>browserstack-local-java</artifactId>
+			<version>${browserstack-local-java.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.json</groupId>
+					<artifactId>json</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20231013</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-devtools-v130</artifactId>
+			<version>${selenium-java.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.annotation</groupId>
+			<artifactId>javax.annotation-api</artifactId>
+			<version>${javax-annotation.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>${lombok.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest</artifactId>
+			<version>${hamcrest.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<repositories>
+    <repository>
+      <id>maven-releases</id>
+      <name>Maven Releases</name>
+      <releases>
+        <enabled>true</enabled>
+        <updatePolicy>never</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </snapshots>
+		<url>https://nexus.luigi.worldpay.io/repository/maven-releases/</url>
+      <layout>default</layout>
+    </repository>
+    <repository>
+      <id>maven-snapshots</id>
+      <name>Maven Snapshots</name>
+      <releases>
+        <enabled>false</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>never</updatePolicy>
+        <checksumPolicy>fail</checksumPolicy>
+      </snapshots>
+		<url>https://nexus.luigi.worldpay.io/repository/maven-snapshots/</url>
+      <layout>default</layout>
+    </repository>
+		<repository>
+			<id>maven-public</id>
+			<name>Maven Public</name>
+
+			<url>https://nexus.luigi.worldpay.io/repository/maven-public/</url>
+			<layout>default</layout>
+		</repository>
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <uniqueVersion>false</uniqueVersion>
+      <id>maven-releases</id>
+      <name>Maven Releases</name>
+		<url>https://nexus.luigi.worldpay.io/repository/maven-releases/</url>
+      <layout>default</layout>
+    </repository>
+    <snapshotRepository>
+      <uniqueVersion>true</uniqueVersion>
+      <id>maven-snapshots</id>
+      <name>Maven Snapshots</name>
+		<url>https://nexus.luigi.worldpay.io/repository/maven-snapshots/</url>
+      <layout>default</layout>
+    </snapshotRepository>
+  </distributionManagement>
+
+</project>
+
+*******************************
+
+
+***********************CONFIG********************************
+
+
+BaseUrl=https://myadmindev.worldpaytd.com/
+IdpUrl=https://login8-dev.fiscloudservices.com/idp/gsi/
+AdminPortalIdpUrl=https://login8-dev.fiscloudservices.com/idp/GSI/
+MbdDeployerLoginUrl=https://mbd-deployer-client.digital.worldpay.io
+MbdDeployerLoginPageTitle=MBD AWS DEPLOYER
+UserDetails=dashboard-api/properties/context/
+IdpPageFormTitle=User Login
+
+
+
+************************testNG
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+<suite name="Parallel Testing Suite" parallel="methods" data-provider-thread-count="12">
+    <test name="Parallel Tests">
+        <classes>
+            <class name="testrunner.TestNGParallelRunner"/>
+        </classes>
+    </test>
+</suite>
+
+**************credentials******************
+
+#,username,password,type,environment
+
+#AWS
+1,TEST03,PassMass123!,ADMIN_USER,AWS
+
+
+*****************************Selector**********
+
+
+AccountsPage,logoutSelector,xpath,"//a[@class='nav-logout sidemenu-link']",-
+AccountsPage,logoutIconSelector,css,"[data-mat-icon-name="fis-icon-logout"]",-
+AccountsPage,accountsPanelSelector,xpath,"//h1[text() = 'Accounts']",-
+
+LoginPage,loginFormTitleSelector,xpath,"//mat-card-title/span",-
+LoginPage,userIDSelector,xpath,"//input[@name='loginName']",-
+LoginPage,passwordSelector,xpath,"//input[@name='password']",-
+LoginPage,idpPasswordExpirySkipButtonSelector,css,"[rufid="idp-password-expiry-skip-button"]",-
+LoginPage,idpPasswordExpiryReminderNoButtonSelector,css,"[rufid="idp-password-expiry-no-button"]",-
+LoginPage,signInButtonSelector,xpath,"//button[@id='idp-first-time-login-signin']",-
+LoginPage,mobileSignInButtonSelector,css,".mobile-only .mat-focus-indicator.mat-raised-button.mat-button-base.mat-primary",-
+LoginPage,skipAuthenticatorSetupSelector,xpath,"//button[contains(@class, 'skip-action')]",-
+LoginPage,userListTextSelector,xpath,"//div[@class='user_list_title']",-
+Generics,loadingSpinnerSelector,data-a8n,"loading-spinner",-
+Generics,chooseFileButtonSelector,data-a8n,"csv-input",-
+Generics,hamburgerMenuLocator,xpath,"//div[@class='navbar-button']",-
+Generics,filterObjectSelector,xpath,"//div[contains(@class, 'show-filters')]",-
+RUFPage,tableRows,xpath,"//tbody/tr[@role='row']",-
+RUFPage,emptyTableError,xpath,"//*[text()='There seems to be a problem']",-
+UserListPage,userLogin,xpath,"//span[contains(text(),'User Login')]",-
+UserListPage,loginName,xpath,"//input[@name='loginName']",-
+UserListPage,loginPwd,xpath,"//input[@name='password']",-
+UserListPage,signIn,xpath,"//button[@id='idp-first-time-login-signin']",-
+UserListPage,worldpayTitle,xpath,"//span[contains(text(),'Welcome to your Worldpay')]",-
+UserListPage,accessUserList,xpath,"//button[contains(text(),'Access user list')]",-
+UserListPage,addUserBtnSelector,xpath,"//span[contains(text(),'Add user')][1]",-
+UserListPage,clickTitleSelector,xpath,"//p-select[@id='pn_id_28']",-
+UserListPage,addTitleSelector,xpath,"//li[@aria-label='Mr.']",-
+UserListPage,firstNameSelector,xpath,"//input[@formcontrolname='firstName']",-
+UserListPage,lastNameSelector,xpath,"//input[@formcontrolname='lastName']",-
+UserListPage,jobTitleSelector,xpath,"//input[@formcontrolname='jobTitle']",-
+UserListPage,emailSelector,xpath,"//input[@formcontrolname='email']",-
+UserListPage,countryCodephoneNumberSelector,xpath,"(//li[@role='option'])[1]",-
+UserListPage,phoneNumberSelector,xpath,"//input[@formcontrolname='phoneNumber']",-
+UserListPage,countryCodemobileNumber,xpath,"//input[@formcontrolname='mobileNumber']/preceding::i",-
+UserListPage,mobileNumberSelector,xpath,"//input[@formcontrolname='mobileNumber']",-
+UserListPage,countryDropDownSelector,xpath,"//label[@for='Country']/following::span[1]",-
+UserListPage,countryDropDownListSelector,xpath,"//li[@role='option']",-
+UserListPage,makeThisUserAnAdmin,xpath,"//label[contains(text(),'Make')]/preceding::input[1]",-
+UserListPage,storeManager,xpath,"//input[@class='p-toggleswitch-input']",-
+UserListPage,saveButtonSelector,xpath,"//span[text()='Add user']/../..//p-button//span[contains(text(),'Save')]",-
+UserListPage,shadowRootSelector,css,"#transcend-consent-manager",-
+UserListPage,acceptAllCookiesSelector,css,"div > button.button",-
+UserListPage,addUserTitleSelector,xpath,"//span[text()='Add user']",-
+UserListPage,addUserToasterMsgSelector,xpath,"//div[contains(text(),'being created')]",-
+UserListPage,adminCheckboxSelector,xpath,"//p-checkbox[@name='isAsAdmin']",-
+UserListPage,sortListSelector,xpath,"//span[text()='Sort ']",-
+UserListPage,recentlyAddedListSelector,xpath,"//span[text()='Recently added']",-
+UserListPage,firstNameSearchSelector,xpath,"//tr[@class='p-datatable-selectable-row']//td[contains(@class,'th-firstname')]",-
+UserListPage,lastNameSearchSelector,xpath,"//tr[@class='p-datatable-selectable-row']//td[contains(@class,'th-lastname')]",-
+UserListPage,emailSearchSelector,xpath,"//tr[@class='p-datatable-selectable-row']//td[contains(@class,'email-data')]",-
+
+
+
+*************************yml******************
+
+---
+nexus_url: "{{ nap_nexus_url }}"
+
+app_version: "0-SNAPSHOT"
+app_group_id: com.worldpay.ds
+app_artifact_id: gsi-ui-automation
+app_artifact_extension: jar
+app_classifier: ''
+
+
+aws_target_instance:
+  "instance-state-name": "running"
+  "tag:Name": "automation-testing-{{ terraform_workspace }}"
+
+wl_app_dir: "/tmp/temp_dir_{{ app_artifact_id }}_{{app_version}}"
+ansible_controller_auto_results_folder: "/home/{{ansible_controller_user}}/auto_results/{{ app_artifact_id }}_{{app_version}}"
+
+####Variables related to java 17, to be deleted once added globally
+jre_nexus_search: "https://{{ nexus_main_url }}/service/rest/v1/search?repository=raw-digital&group=/jre&name=jre/server-jre-17u7-linux-x64.tar.gz"
+jre_tarball: "server-jre-17u7-linux-x64.tar.gz"
+jre_version: "1.17.7"
+keystore_pth: "{{ springboot_app_dir }}/java/java/lib/security/cacerts"
+java_version: 17
+java_subversion: 7
+orajdk11: true
+############################################
+
+
+
+
+
+
+
+
+
+
+
